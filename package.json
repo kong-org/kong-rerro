@@ -1,0 +1,24 @@
+{
+  "name": "kong-rerro",
+  "version": "1.0.0",
+  "description": "$RERRO ERC-20 Token",
+  "main": "hardhat.config.js",
+  "scripts": {
+    "test": "hardhat test",
+    "compile": "hardhat compile",
+    "deploy": "hardhat run scripts/deploy.js --network localhost"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "@openzeppelin/contracts": "^4.9.5",
+    "chai": "^4.3.4",
+    "ethereum-waffle": "^3.4.0",
+    "ethers": "^5.4.7",
+    "hardhat": "^2.20.1",
+    "keccak256": "^1.0.0",
+    "merkletreejs": "^0.2.0"
+  }
+}
