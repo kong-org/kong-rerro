@@ -91,7 +91,7 @@ describe("RerroToken", function () {
     await rerroToken.setScannerMintSeededAmount(newScannerAmount);
     await rerroToken.setChipIdOwnerMintAmount(newOwnerAmount);
 
-    // Continue with mint test similar to above, expect new amounts
+    // WIP: Continue with mint test similar to above, expect new amounts
   });
 
 
