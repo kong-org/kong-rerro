@@ -1,7 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { MerkleTree } = require("merkletreejs");
-const keccak256 = require("keccak256");
+
 const readline = require("readline");
 
 // Helper functions for interactive input
@@ -22,50 +21,92 @@ function askQuestion(query) {
 
 describe("RerroToken Interactive Test with Chip Address Seeding", function () {
     this.timeout(1200000);
-    let rerroToken, deployer, trustedForwarder, otherAccount;
+    let rerroToken, deployer, trustedForwarder, scanner;
 
     before(async function () {
-        [deployer, trustedForwarder, otherAccount] = await ethers.getSigners();
+        [deployer, trustedForwarder, scanner] = await ethers.getSigners();
         const RerroToken = await ethers.getContractFactory("RerroToken");
         rerroToken = await RerroToken.deploy(trustedForwarder.address);
         await rerroToken.deployed();
-        await rerroToken.setPausedState(false);
+        await rerroToken.setMintPausedState(false);
     });
 
     it("Interactive seeding and minting with user-provided signature", async function () {
+
+        const provider = ethers.provider; // Using Hardhat's default provider
+
         // Prompt for the chip address to seed
         const chipAddress = await askQuestion("Enter the chip address to seed: ");
 
-        const leaves = [chipAddress].map(x => keccak256(x));
-        const merkleTree = new MerkleTree(leaves, keccak256, { sortPairs: true });
-        const merkleRoot = merkleTree.getHexRoot();
-        await rerroToken.updateMerkleRoot(merkleRoot);
-        
-        // Right after generating the Merkle proof for the correctly encoded chip address
-        const proof = merkleTree.getHexProof(keccak256(chipAddress));
+        // Send the chipAddress some Ether to cover gas costs
+        await deployer.sendTransaction({
+            to: chipAddress,
+            value: ethers.utils.parseEther("1") // Sending 1 ETH for example
+        });
+        const chipBalance = await provider.getBalance(chipAddress);
+        console.log(`Chip balance: ${chipBalance}`);
 
-        // Seed the chip address with the Merkle proof
-        // Make sure to use 'await' to ensure the transaction completes before moving on
-        await rerroToken.connect(deployer).seedAddress(proof, chipAddress);
+        await rerroToken.bulkSeed([chipAddress]);
 
-        // Continue with the minting process as before...
-        const blockNumber = await ethers.provider.getBlockNumber();
-        const blockHash = (await ethers.provider.getBlock(blockNumber)).hash;
+        const chainId = await hre.network.config.chainId;
+        console.log(`Chain ID: ${chainId}`);
+    
+        const nonce = await provider.getTransactionCount(chipAddress);
+        console.log(`Nonce: ${nonce}`);
+
+        const data = rerroToken.interface.encodeFunctionData("mint", [scanner.address]);
+        console.log(`Data: ${data}`);
+    
+        const transaction = {
+            to: rerroToken.address,
+            nonce: nonce,
+            gasLimit: ethers.utils.hexlify(1000000), // Example gas limit
+            gasPrice: ethers.utils.hexlify(ethers.utils.parseUnits('10', 'gwei')), // Example gas price
+            data: data,
+            chainId: chainId,
+        };
+    
+        const tx = await ethers.utils.resolveProperties(transaction);
+        console.log(`Resolved transaction: ${JSON.stringify(tx, null, 2)}`);
+        const rawTx = ethers.utils.serializeTransaction(tx);
+        console.log(`Raw transaction: ${rawTx}`);
+        const digest = ethers.utils.keccak256(rawTx);
 
         // Construct the digest to be signed
-        const digest = ethers.utils.solidityPack(["address", "bytes32"], [otherAccount.address, blockHash]);
+        // const digest = ethers.utils.solidityPack(["address", "bytes32"], [otherAccount.address, blockHash]);
 
         // Wait for the user to sign the digest and paste the signature
         console.log(`Please sign the digest ${digest} using your wallet and paste the signature here:`);
-        const signature = await askQuestion("Signature: ");
+        // Prompt for signature components
+        const r = await askQuestion("r component of the signature: ");
+        const s = await askQuestion("s component of the signature: ");
+        const v = await askQuestion("v component of the signature (decimal): ");
 
-        // Call the mint function with the user address, block number, and provided signature
-        await expect(rerroToken.connect(otherAccount).mint(chipAddress, blockNumber, signature))
-            .to.emit(rerroToken, 'Transfer')
-            .withArgs(ethers.constants.AddressZero, otherAccount.address, ethers.utils.parseEther("1")); // Adjust according to actual mint logic
+        // TODO: verify whether or not we once again need to resolve properties and/or serialize the transaction before sending
+        const signature = {
+            r: r,
+            s: s,
+            v: v
+        };
 
+        // const signedTx = await ethers.utils.resolveProperties(transaction);
+        // console.log(`Transaction with signature: ${JSON.stringify(signedTx, null, 2)}`);
+        const signedTransaction = ethers.utils.serializeTransaction(tx, signature);
+        // console.log(`Signed transaction: ${signedTransaction}`);
+        const parsedTx = ethers.utils.parseTransaction(signedTransaction);
+        // console.log(`Parsed transaction: ${JSON.stringify(parsedTx, null, 2)}`);
+        
+        // const signature = await askQuestion("Signature: ");
+    
+        const scannerBalanceBefore = await rerroToken.balanceOf(scanner.address);
+        const txResponse = await provider.sendTransaction(signedTransaction);
+        // console.log(`Transaction sent: ${txResponse}`);
+        await txResponse.wait(); // Wait for the transaction to be mined
+
+        // Test that the balance of the scanner has increased by the default mint amount
+        const mintAmount = await rerroToken.defaultMintAmount();
+        const scannerBalanceAfter = await rerroToken.balanceOf(scanner.address);
+        expect(scannerBalanceAfter.sub(scannerBalanceBefore)).to.equal(mintAmount);
         console.log("Token minted with the provided signature.");
     });
-
-    // Add more tests or before/after hooks as needed
 });

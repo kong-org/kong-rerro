@@ -13,16 +13,17 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
 
     bytes32 public merkleRoot;
     mapping(address => address) public chipIdOwner;
-    mapping(address => bool) public seededAddresses;
+    mapping(address => bool) public seededChips;
+    mapping(address => uint256) public seededChipAmounts;
     mapping(address => mapping(address => bool)) public scannerMinted;
-    bool public paused = true;
+    bool public claimOwnershipPaused = true;
+    bool public mintPaused = true;
 
     // Initial token amounts for $RERRO Quest
     uint256 public tokenCap = 14997495 * 10**18;
-    uint256 public scannerMintAmountAny = 1 * 10**18;
-    uint256 public scannerMintAmountSeeded = 1 * 10**18;
+    uint256 public defaultMintAmount = 1 * 10**18;
+    uint256 public defaultClaimedMintAmount = 2 * 10**18;
     uint256 public chipIdOwnerMintAmount = 1 * 10**18;
-
 
     constructor(address trustedForwarder) ERC20("Rerro", "RERRO") ERC2771Context(trustedForwarder) {
         // _mint(account, amount);
@@ -32,71 +33,75 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
         tokenCap = _newCap;
     }
 
-    function seedAddress(bytes32[] calldata merkleProof, address chipId) external {
-        require(!paused, "Seeding and minting are currently disabled.");
-        bytes32 leaf = keccak256(abi.encodePacked(chipId));
-        require(MerkleProof.verify(merkleProof, merkleRoot, leaf), "Invalid proof.");
-        require(!seededAddresses[chipId], "Address already seeded.");
-        
-        seededAddresses[chipId] = true;
-        chipIdOwner[chipId] = _msgSender();
-    }
-
-    function mint(address chipId, uint256 blockNumber, bytes calldata signature) external {
-        require(!paused, "Seeding and minting are currently disabled.");
-        require(seededAddresses[chipId], "Chip not seeded.");
-        require(blockNumber > block.number - 1000 && blockNumber <= block.number, "Block number out of range.");
-        console.log(blockNumber);
-        require(!scannerMinted[chipId][_msgSender()], "Scanner has already minted for this chipId.");
-        require(totalSupply() + scannerMintAmountSeeded + chipIdOwnerMintAmount <= tokenCap, "Cannot mint, may exceed token cap");
-
-        bytes32 blockHash = blockhash(blockNumber);
-        address scanner = msg.sender;
-        bytes32 messageHash = ECDSA.toEthSignedMessageHash(abi.encodePacked(scanner, blockHash));
-        console.logBytes32(messageHash);
-        address recoveredAddress = messageHash.recover(signature);
-        console.logAddress(recoveredAddress);
-        require(recoveredAddress == chipId, "Invalid signature.");
-
-        scannerMinted[chipId][_msgSender()] = true;
-
-        if (chipIdOwner[chipId] != _msgSender()) {
-            _mint(_msgSender(), scannerMintAmountSeeded); // Use the modifiable mint amount for the scanner
-            _mint(chipIdOwner[chipId], chipIdOwnerMintAmount); // Use the modifiable mint amount for the chipId owner
-        } else {
-            // If the scanner is also the chipId owner, mint only once using the scannerMintAmount or chipIdOwnerMintAmount
-            _mint(_msgSender(), scannerMintAmountSeeded); // Or chipIdOwnerMintAmount, depending on your preference
+    function bulkSeed(address[] calldata chipIds) external onlyOwner {
+        for (uint256 i = 0; i < chipIds.length; i++) {
+            address chipId = chipIds[i];
+            seededChips[chipId] = true;
+            seededChipAmounts[chipId] = defaultMintAmount;
         }
     }
 
-    // TODO: mint with merkleProof but without seeding
-
-    function seedChipIdWithCustomMint(address chipId, uint256 mintAmount, bytes32[] calldata merkleProof) external onlyOwner {
-        require(!paused, "Seeding and minting are currently disabled.");
-        bytes32 leaf = keccak256(abi.encodePacked(chipId));
-        require(MerkleProof.verify(merkleProof, merkleRoot, leaf), "Invalid proof.");
-        require(!seededAddresses[chipId], "Chip already seeded.");
-        require(totalSupply() + mintAmount <= tokenCap, "Exceeds token cap");
-
-        seededAddresses[chipId] = true;
-        chipIdOwner[chipId] = msg.sender;
-        _mint(chipIdOwner[chipId], mintAmount);
+    function setMintAmount(address chipId, uint256 mintAmount) external onlyOwner {
+        seededChipAmounts[chipId] = mintAmount;
     }
 
-    function setPausedState(bool _state) external onlyOwner {
-        paused = _state;
+    function bulkSetMintAmount(address[] calldata chipIds, uint256[] calldata mintAmounts) external onlyOwner {
+        require(chipIds.length == mintAmounts.length, "Mismatched arrays length");
+
+        for (uint256 i = 0; i < chipIds.length; i++) {
+            seededChipAmounts[chipIds[i]] = mintAmounts[i];
+        }
+    }
+
+    // Called from the chip and relayed via ERC2771; note a few things:
+    // 1. the chip is the signer and thus the sign command works even on old chips
+    // 2. the scanner doesnt need to sign any tx
+    // 3. _msgSender() is the chip, not the scanner
+    function claimOwnership(address owner) external {
+        address chipId = _msgSender();
+
+        require(!claimOwnershipPaused, "Claiming is currently disabled.");
+        chipIdOwner[chipId] = owner;
+        seededChipAmounts[chipId] = defaultClaimedMintAmount; // We set a higher mint amount for chips that have been claimed by someone
+    }
+
+    // Called from the chip and relayed via ERC2771; note a few things:
+    // 1. the chip is the signer and thus the sign command works even on old chips
+    // 2. the scanner doesnt need to sign any tx
+    // 3. _msgSender() is the chip, not the scanner
+    function mint(address scanner) external {
+        address chipId = _msgSender();
+
+        require(!mintPaused, "Seeding and minting are currently disabled.");
+        require(seededChips[chipId], "Unknown chipId.");
+        require(!scannerMinted[chipId][scanner], "Scanner has already minted this chipId.");
+
+        uint256 scannerMintAmount = seededChipAmounts[chipId];
+        require(totalSupply() + scannerMintAmount + chipIdOwnerMintAmount <= tokenCap, "Cannot mint, may exceed token cap");
+
+        address chipOwner = chipIdOwner[chipId];
+        scannerMinted[chipId][scanner] = true;
+
+        // The owner cannot also be the scanner
+        if (chipOwner != scanner) {
+            _mint(scanner, scannerMintAmount);
+            // Check to see if the chip has been claimed by someone
+            if (chipOwner != address(0)) {
+                _mint(chipIdOwner[chipId], chipIdOwnerMintAmount);
+            }
+        }
+    }
+
+    function setMintPausedState(bool _state) external onlyOwner {
+        mintPaused = _state;
+    }
+
+    function setClaimOwnershipPausedState(bool _state) external onlyOwner {
+        claimOwnershipPaused = _state;
     }
 
     function updateMerkleRoot(bytes32 newMerkleRoot) external onlyOwner {
         merkleRoot = newMerkleRoot;
-    }
-
-    function setScannerMintAnyAmount(uint256 _amount) external onlyOwner {
-        scannerMintAmountAny = _amount;
-    }
-
-    function setScannerMintSeededAmount(uint256 _amount) external onlyOwner {
-        scannerMintAmountSeeded = _amount;
     }
 
     function setChipIdOwnerMintAmount(uint256 _amount) external onlyOwner {
