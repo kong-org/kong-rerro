@@ -30,6 +30,30 @@ const { ForwarderAbi } = [
       "type": "event"
     },
     {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "from",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "salt",
+          "type": "uint256"
+        }
+      ],
+      "name": "checkSalt",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
       "inputs": [],
       "name": "eip712Domain",
       "outputs": [
@@ -98,7 +122,7 @@ const { ForwarderAbi } = [
             },
             {
               "internalType": "uint256",
-              "name": "nonce",
+              "name": "salt",
               "type": "uint256"
             },
             {
@@ -136,25 +160,6 @@ const { ForwarderAbi } = [
     {
       "inputs": [
         {
-          "internalType": "address",
-          "name": "from",
-          "type": "address"
-        }
-      ],
-      "name": "getNonce",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
           "components": [
             {
               "internalType": "address",
@@ -178,7 +183,7 @@ const { ForwarderAbi } = [
             },
             {
               "internalType": "uint256",
-              "name": "nonce",
+              "name": "salt",
               "type": "uint256"
             },
             {
@@ -213,6 +218,7 @@ const ForwarderAddress = "0xfa54D7f9266Cddd388cb0c8d184553Cd1e824DD3";
 
 async function relay(forwarder, request, signature, whitelist) {
   // Decide if we want to relay this request based on a whitelist
+  console.log(`request is ${JSON.stringify(request)}`)
   const accepts = !whitelist || whitelist.includes(request.to);
   if (!accepts) throw new Error(`Rejected request to ${request.to}`);
 

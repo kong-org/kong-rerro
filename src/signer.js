@@ -57,6 +57,7 @@ async function buildRequest(forwarder, input) {
 }
 
 async function buildTypedData(forwarder, request) {
+    console.log(`buildTypedData`);
   const chainId = await forwarder.provider.getNetwork().then(n => n.chainId);
   const typeData = getMetaTxTypeData(chainId, forwarder.address);
   return { ...typeData, message: request };
@@ -65,7 +66,9 @@ async function buildTypedData(forwarder, request) {
 // Since we won't pass in HaLo as a signer, we won't use this function
 async function signMetaTxRequest(signer, forwarder, input) {
   const request = await buildRequest(forwarder, input);
+  console.log(request);
   const toSign = await buildTypedData(forwarder, request);
+  console.log(toSign);
   const signature = await signTypedData(signer, input.from, toSign);
   return { signature, request };
 }

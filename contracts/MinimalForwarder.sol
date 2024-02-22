@@ -5,6 +5,7 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "hardhat/console.sol";
 
 /**
  * @dev Simple minimal forwarder to be used together with an ERC2771 compatible contract. See {ERC2771Context}.
@@ -49,12 +50,19 @@ contract MinimalForwarder is EIP712 {
 
     function verify(ForwardRequest calldata req, bytes calldata signature) public view returns (bool) {
         // Note: what we are verifying here is the `ForwardRequestSig` struct commented out above
+        
+ 
         address signer = _hashTypedDataV4(
             keccak256(abi.encode(_TYPEHASH, req.to, req.value, req.gas, req.salt, keccak256(req.data)))
         ).recover(signature);
+
+        bytes32 dataHash = keccak256(req.data);
+        console.logBytes32(dataHash);
         
         // Check if the salt has been used before.
         bool saltUsed = _usedSalts[req.from][req.salt];
+        console.log("saltUsed: ", saltUsed);
+        console.log("signer: ", signer);   
         return !saltUsed && signer == req.from;
     }
 
