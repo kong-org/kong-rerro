@@ -22,7 +22,7 @@ contract MinimalForwarder is EIP712 {
         address to;
         uint256 value;
         uint256 gas;
-        uint256 nonce;
+        uint256 salt;
         bytes data;
     }
 
@@ -31,28 +31,31 @@ contract MinimalForwarder is EIP712 {
     //     address to;
     //     uint256 value;
     //     uint256 gas;
-    //     uint256 nonce;
+    //     uint256 salt;
     //     bytes data;
     // }
 
     // Note that `from` has been removed from the request
     bytes32 private constant _TYPEHASH =
-        keccak256("ForwardRequest(address to,uint256 value,uint256 gas,uint256 nonce,bytes data)");
+        keccak256("ForwardRequest(address to,uint256 value,uint256 gas,uint256 salt,bytes data)");
 
-    mapping(address => uint256) private _nonces;
+    mapping(address => mapping(uint256 => bool)) private _usedSalts;
 
     constructor() EIP712("MinimalForwarder", "0.0.2") {}
 
-    function getNonce(address from) public view returns (uint256) {
-        return _nonces[from];
+    function checkSalt(address from, uint256 salt) public view returns (bool) {
+        return _usedSalts[from][salt];
     }
 
     function verify(ForwardRequest calldata req, bytes calldata signature) public view returns (bool) {
+        // Note: what we are verifying here is the `ForwardRequestSig` struct commented out above
         address signer = _hashTypedDataV4(
-            // `from` removed from the digest used in the signed message
-            keccak256(abi.encode(_TYPEHASH, req.to, req.value, req.gas, req.nonce, keccak256(req.data)))
+            keccak256(abi.encode(_TYPEHASH, req.to, req.value, req.gas, req.salt, keccak256(req.data)))
         ).recover(signature);
-        return _nonces[req.from] == req.nonce && signer == req.from;
+        
+        // Check if the salt has been used before.
+        bool saltUsed = _usedSalts[req.from][req.salt];
+        return !saltUsed && signer == req.from;
     }
 
     function execute(
@@ -60,7 +63,8 @@ contract MinimalForwarder is EIP712 {
         bytes calldata signature // See ForwardRequestSig for what we've actually signed 
     ) public payable returns (bool, bytes memory) {
         require(verify(req, signature), "MinimalForwarder: signature does not match request");
-        _nonces[req.from] = req.nonce + 1;
+        // Store the salt for this `from` + `salt` pair, to prevent replay attacks.
+        _usedSalts[req.from][req.salt] = true;
 
         (bool success, bytes memory returndata) = req.to.call{gas: req.gas, value: req.value}(
             abi.encodePacked(req.data, req.from)

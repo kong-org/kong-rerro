@@ -11,7 +11,7 @@ const ForwardRequest = [
   { name: 'to', type: 'address' },
   { name: 'value', type: 'uint256' },
   { name: 'gas', type: 'uint256' },
-  { name: 'nonce', type: 'uint256' },
+  { name: 'salt', type: 'uint256' },
   { name: 'data', type: 'bytes' },
 ];
 
@@ -48,8 +48,12 @@ async function signTypedData(signer, from, data) {
 }
 
 async function buildRequest(forwarder, input) {
-  const nonce = await forwarder.getNonce(input.from).then(nonce => nonce.toString());
-  return { value: 0, gas: 1e6, nonce, ...input };
+  const saltBytes = ethers.utils.randomBytes(32);
+  const salt = ethers.utils.hexlify(saltBytes).toString();
+  const reusedSalt = await forwarder.checkSalt(input.from, salt);
+  if (reusedSalt) { throw new Error('Salt has been reused') }; 
+  console.log(`Salt: ${salt}`);
+  return { value: 0, gas: 1e6, salt, ...input };
 }
 
 async function buildTypedData(forwarder, request) {

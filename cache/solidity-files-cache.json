@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/cameron/Documents/Arx Research/Development/kong-rerro/contracts/RerroToken.sol": {
-      "lastModificationDate": 1708587461041,
-      "contentHash": "377f06f2e5a58514503e9022bdd070c5",
+      "lastModificationDate": 1708589136296,
+      "contentHash": "8f8e4a4d1178f86e0fefbaeabcff7140",
       "sourceName": "contracts/RerroToken.sol",
       "solcConfig": {
         "version": "0.8.17",
@@ -478,8 +478,8 @@
       ]
     },
     "/Users/cameron/Documents/Arx Research/Development/kong-rerro/contracts/MinimalForwarder.sol": {
-      "lastModificationDate": 1708553494699,
-      "contentHash": "1349b078f5d2eebc00b4e7a16f047ba1",
+      "lastModificationDate": 1708629090192,
+      "contentHash": "091f51ba722e92d069789046b6d235f3",
       "sourceName": "contracts/MinimalForwarder.sol",
       "solcConfig": {
         "version": "0.8.17",

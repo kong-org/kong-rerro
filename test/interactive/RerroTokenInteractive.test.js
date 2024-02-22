@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-
+const { signMetaTxRequest, buildTypedData, buildRequest } = require("../../src/signer");
 const readline = require("readline");
 
 // Helper functions for interactive input
@@ -59,6 +59,8 @@ describe("RerroToken Interactive Test with Chip Address Seeding", function () {
             chainId: chainId,
         };
     
+        // TODO: we need to migrate this test to building up an EIP712 message that is then hashed and presented as the digest below for signing
+
         const tx = await ethers.utils.resolveProperties(transaction);
         const rawTx = ethers.utils.serializeTransaction(tx);
         const digest = ethers.utils.keccak256(rawTx);

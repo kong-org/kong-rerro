@@ -15,6 +15,8 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
     mapping(address => bool) public seededChips;
     mapping(address => uint256) public seededChipAmounts;
     mapping(address => mapping(address => bool)) public scannerMinted;
+
+    // TODO: change pause times to windows that have an initial setting in the constructor.
     bool public claimOwnershipPaused = true;
     bool public mintPaused = true;
 

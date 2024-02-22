@@ -1,6 +1,6 @@
 const { expect } = require("chai").use(require('chai-as-promised'));
 const { ethers } = require("hardhat");
-const { signMetaTxRequest } = require("../../src/signer");
+const { signMetaTxRequest, buildTypedData, buildRequest } = require("../../src/signer");
 const { relay } = require('../../action/index.js');
 
 async function deploy(name, ...params) {
@@ -26,6 +26,7 @@ describe("RerroToken Relay Tests", function() {
 
     // Capture the scanner's balance before minting
     const balanceBefore = await rerroToken.balanceOf(scanner.address);
+    console.log(`balanceBefore: ${balanceBefore}`)
 
     // TODO: create interactive test where we sign using chip
     const { request, signature } = await signMetaTxRequest(signer.provider, forwarder, {
@@ -33,7 +34,17 @@ describe("RerroToken Relay Tests", function() {
       to: rerroToken.address,
       data: rerroToken.interface.encodeFunctionData('mint', [scanner.address]),
     });
+    console.log(request);
     
+    const requestObj = await buildRequest(forwarder, {
+      to: rerroToken.address,
+      data: rerroToken.interface.encodeFunctionData('mint', [scanner.address]),
+    });
+    console.log(requestObj);
+
+    const toSign = await buildTypedData(forwarder, requestObj);
+    console.log(toSign);
+
     const whitelist = [rerroToken.address]
     await relay(forwarder, request, signature, whitelist);
 
@@ -64,16 +75,31 @@ describe("RerroToken Relay Tests", function() {
   it("refuses to send incorrect signature", async function() {
     const { forwarder, rerroToken, signer, scanner } = this;
 
+    const saltBytes = ethers.utils.randomBytes(32);
+    const salt = ethers.utils.hexlify(saltBytes);
+
     const { request, signature } = await signMetaTxRequest(signer.provider, forwarder, {
       from: signer.address,
       to: rerroToken.address,
       data: rerroToken.interface.encodeFunctionData('mint', [scanner.address]),
-      nonce: 5,
+      salt: salt,
     });
-    
+
     const whitelist = [rerroToken.address]
+    await relay(forwarder, request, signature, whitelist)
+
+    const { request2, signature2 } = await signMetaTxRequest(signer.provider, forwarder, {
+        from: signer.address,
+        to: rerroToken.address,
+        data: rerroToken.interface.encodeFunctionData('mint', [this.accounts[7].address]),
+        salt: salt,
+    });
+
+    await relay(forwarder, request2, signature2, whitelist)
+    console.log(`request2: ${request2}`)    
+
     await expect(
-      relay(forwarder, request, signature, whitelist)
+      relay(forwarder, request2, signature2, whitelist)
     ).to.be.rejectedWith(/invalid/i);
   });
 });
