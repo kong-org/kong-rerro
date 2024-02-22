@@ -1,13 +1,31 @@
 const hre = require("hardhat");
 
 async function main() {
-  // We get the contract to deploy
-  const MyContract = await hre.ethers.getContractFactory("RerroToken");
-  const myContract = await MyContract.deploy();
+  // Logging the public address of the deployer's private key
+  const networkName = hre.network.name;
+  const privateKey = process.env[`${networkName.toUpperCase()}_PRIVATE_KEY`];
 
-  await myContract.deployed();
+  if (!privateKey) {
+    throw new Error(`Private key for network ${networkName} is not set.`);
+  }
 
-  console.log("RerroToken deployed to:", myContract.address);
+  // Derive the address from the private key
+  const wallet = new hre.ethers.Wallet(privateKey, hre.ethers.provider);
+  console.log("Deploying contracts with the account:", wallet.address);
+
+  // Deploy the MinimalForwarder contract
+  const MinimalForwarderContract = await hre.ethers.getContractFactory("MinimalForwarder");
+  const minimalForwarder = await MinimalForwarderContract.deploy();
+
+  console.log("MinimalForwarder deployed to:", minimalForwarder.address);
+
+  // Deploy the $RERRO contract
+  const RerroContract = await hre.ethers.getContractFactory("RerroToken");
+  const rerroContract = await RerroContract.deploy(minimalForwarder.address);
+
+  await rerroContract.deployed();
+
+  console.log("RerroToken deployed to:", rerroContract.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

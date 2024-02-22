@@ -3,7 +3,6 @@ pragma solidity ^0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/metatx/ERC2771Context.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "hardhat/console.sol";
@@ -70,7 +69,7 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
     // 2. the scanner doesnt need to sign any tx
     // 3. _msgSender() is the chip, not the scanner
     function mint(address scanner) external {
-        address chipId = _msgSender();
+        address chipId = _msgSender();  
 
         require(!mintPaused, "Seeding and minting are currently disabled.");
         require(seededChips[chipId], "Unknown chipId.");
@@ -98,10 +97,6 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
 
     function setClaimOwnershipPausedState(bool _state) external onlyOwner {
         claimOwnershipPaused = _state;
-    }
-
-    function updateMerkleRoot(bytes32 newMerkleRoot) external onlyOwner {
-        merkleRoot = newMerkleRoot;
     }
 
     function setChipIdOwnerMintAmount(uint256 _amount) external onlyOwner {
