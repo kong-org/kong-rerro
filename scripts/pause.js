@@ -28,9 +28,7 @@ function loadContractDetails(contractName) {
     // Extract the ABI
     const contractABI = artifact.abi;
 
-    // The contract address is not typically stored in the artifact file.
-    // You'll need to obtain it from your deployment script or environment variables.
-    // For demonstration, we'll leave it as an empty string.
+    // TODO: get this from env/deployments
     const rerroAddress = '0xB709b74d34ec337992d3EE00C386A2Bc4cEacc84'; // Set this based on your deployment
 
     return { rerroAddress, contractABI };
@@ -40,30 +38,23 @@ const { rerroAddress, contractABI } = loadContractDetails(contractName);
 console.log(`Contract address: ${rerroAddress}`);
 const contract = new ethers.Contract(rerroAddress, contractABI, signer);
 
-async function readPublicKeysFromFile(filePath) {
-    const fileContent = fs.readFileSync(filePath, { encoding: 'utf-8' });
-    const lines = fileContent.split('\n');
-    return lines.filter(line => line.length > 0);
+async function setMintPause(state) {
+    await contract.setMintPausedState(state).then((tx) => tx.wait());
+    console.log(`Set mint paused state set to ${state}`);
 }
 
-function publicKeyToAddress(publicKey) {
-    const publicKeyBuffer = Buffer.from(publicKey, 'hex');
-    const addressBuffer = keccak256(publicKeyBuffer.slice(1)).slice(-20);
-    return toChecksumAddress(`0x${addressBuffer.toString('hex')}`);
-}
-
-async function bulkSeedChips(publicKeys) {
-    const addresses = publicKeys.map(publicKey => publicKeyToAddress(publicKey));
-    console.log(`Seeding the following addresses: ${addresses}`);
-    await contract.bulkSeed(addresses).then((tx) => tx.wait());
-    console.log('Bulk seed transaction submitted.');
+async function setClaimOwnershipPaused(state) {
+    await contract.setClaimOwnershipPausedState(state).then((tx) => tx.wait());
+    console.log(`Set claimOwnership paused state set to ${state}`);
 }
 
 // Main script execution
 (async () => {
-    const filePath = 'chipPublicKeys.txt';
-    const publicKeys = await readPublicKeysFromFile(filePath);
-    await bulkSeedChips(publicKeys);
+    // TODO: prompt user for these
+    const setMintPausedBool = false
+    const setClaimOwnershipPausedBool = false
+    await setMintPause(setMintPausedBool);
+    await setClaimOwnershipPaused(setClaimOwnershipPausedBool);
 })().catch(err => {
     console.error('Error in executing the script:', err);
 });

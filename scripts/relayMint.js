@@ -6,6 +6,8 @@ require("dotenv").config();
 (async () => {
     // Get the contract ABI
     const artifact = await artifacts.readArtifact("RerroToken");
+
+    // The contract API could be added as a JSON blob instead
     const abi = artifact.abi;
   
     // Get the provider from Hardhat's default environment
@@ -13,8 +15,8 @@ require("dotenv").config();
   
     // RerroToken and Forwarder Contract Addresses
     // TODO: move these to environment variables, specfic to deployment
-    const rerroAddress = "0xcC0A19420cdE09FB852A24F9C156A69E3EC16C4e";
-    const forwarderAddress = "0xA3966EC0b4242e37b3cE32CD19c3878338d2e4D6";
+    const rerroAddress = "0xB709b74d34ec337992d3EE00C386A2Bc4cEacc84";
+    const forwarderAddress = "0x4266814eB1c683AAf8574bd7D4D5450bb5F74E88";
   
     // Initialize contract instance
     const rerroToken = new ethers.Contract(rerroAddress, abi, provider);
@@ -84,6 +86,7 @@ require("dotenv").config();
     
       // Get the chip signature through the gateway
       const chipSig = (await getChipSigWithGateway(gateway, typedData.domain, typedData.types, typedData.value));
+      console.log("Received mint signature, awaiting relay...")
 
       const signature = {
           r: '0x' + chipSig.signature.raw.r,
@@ -116,7 +119,6 @@ require("dotenv").config();
     // Call the function
     try {
       const response = await sendMetaTx(provider, scannerAddress);
-      console.log("Transaction sent:", response);
     } catch (error) {
       console.error("Failed to send meta-tx:", error);
     }

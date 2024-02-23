@@ -1,7 +1,7 @@
 const { Defender } = require('@openzeppelin/defender-sdk');
 const { ethers } = require('ethers')
 
-const { ForwarderAbi } = [
+const ForwarderAbi = [
     {
       "inputs": [],
       "stateMutability": "nonpayable",
@@ -258,7 +258,7 @@ const { ForwarderAbi } = [
       "type": "function"
     }
   ];
-const ForwarderAddress = "0xA3966EC0b4242e37b3cE32CD19c3878338d2e4D6";
+const ForwarderAddress = "0x4266814eB1c683AAf8574bd7D4D5450bb5F74E88";
 
 async function relay(forwarder, request, signature, whitelist) {
   // Decide if we want to relay this request based on a whitelist
@@ -276,7 +276,7 @@ async function relay(forwarder, request, signature, whitelist) {
 
 async function handler(event) {
   // Parse webhook payload
-  if (!event.request || !event.request.body || !event.request.body.signature) throw new Error(`Missing payload`);
+  if (!event.request || !event.request.body || !event.request.body.signature || !event.request.body.request) throw new Error(`Missing payload`);
   const { request, signature } = event.request.body;
 
   // Initialize Relayer provider and signer, and forwarder contract
