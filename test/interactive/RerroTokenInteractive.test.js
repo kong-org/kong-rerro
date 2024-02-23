@@ -1,6 +1,5 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { signMetaTxRequest, buildTypedData, buildRequest } = require("../../src/signer");
 const readline = require("readline");
 
 // Helper functions for interactive input
