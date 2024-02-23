@@ -121,6 +121,11 @@ const { ForwarderAbi } = [
               "type": "uint256"
             },
             {
+              "internalType": "uint48",
+              "name": "deadline",
+              "type": "uint48"
+            },
+            {
               "internalType": "uint256",
               "name": "salt",
               "type": "uint256"
@@ -136,9 +141,26 @@ const { ForwarderAbi } = [
           "type": "tuple"
         },
         {
-          "internalType": "bytes",
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "r",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "s",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint8",
+              "name": "v",
+              "type": "uint8"
+            }
+          ],
+          "internalType": "struct MinimalForwarder.ECDSASignature",
           "name": "signature",
-          "type": "bytes"
+          "type": "tuple"
         }
       ],
       "name": "execute",
@@ -182,6 +204,11 @@ const { ForwarderAbi } = [
               "type": "uint256"
             },
             {
+              "internalType": "uint48",
+              "name": "deadline",
+              "type": "uint48"
+            },
+            {
               "internalType": "uint256",
               "name": "salt",
               "type": "uint256"
@@ -197,9 +224,26 @@ const { ForwarderAbi } = [
           "type": "tuple"
         },
         {
-          "internalType": "bytes",
+          "components": [
+            {
+              "internalType": "bytes32",
+              "name": "r",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "s",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "uint8",
+              "name": "v",
+              "type": "uint8"
+            }
+          ],
+          "internalType": "struct MinimalForwarder.ECDSASignature",
           "name": "signature",
-          "type": "bytes"
+          "type": "tuple"
         }
       ],
       "name": "verify",
@@ -214,7 +258,7 @@ const { ForwarderAbi } = [
       "type": "function"
     }
   ];
-const ForwarderAddress = "0xfa54D7f9266Cddd388cb0c8d184553Cd1e824DD3";
+const ForwarderAddress = "0xA3966EC0b4242e37b3cE32CD19c3878338d2e4D6";
 
 async function relay(forwarder, request, signature, whitelist) {
   // Decide if we want to relay this request based on a whitelist
@@ -232,19 +276,17 @@ async function relay(forwarder, request, signature, whitelist) {
 
 async function handler(event) {
   // Parse webhook payload
-  if (!event.request || !event.request.body) throw new Error(`Missing payload`);
+  if (!event.request || !event.request.body || !event.request.body.signature) throw new Error(`Missing payload`);
   const { request, signature } = event.request.body;
-  console.log(`Relaying`, request);
-  
+
   // Initialize Relayer provider and signer, and forwarder contract
-  const client = new Defender(credentials);
+  const client = new Defender(event);
   const provider = client.relaySigner.getProvider();
   const signer = client.relaySigner.getSigner(provider, { speed: 'fast' });
   const forwarder = new ethers.Contract(ForwarderAddress, ForwarderAbi, signer);
   
   // Relay transaction!
   const tx = await relay(forwarder, request, signature);
-  console.log(`Sent meta-tx: ${tx.hash}`);
   return { txHash: tx.hash };
 }
 
