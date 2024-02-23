@@ -10,7 +10,7 @@ async function instantiateGateway() {
   let pairInfo;
   try {
     pairInfo = await gate.startPairing();
-    console.log('URL in the QR code:', pairInfo.qrCode);
+    // console.log('URL in the QR code:', pairInfo.qrCode);
   } catch (e) {
     console.log(e);
   }

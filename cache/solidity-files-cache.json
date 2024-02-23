@@ -478,8 +478,8 @@
       ]
     },
     "/Users/cameron/Documents/Arx Research/Development/kong-rerro/contracts/MinimalForwarder.sol": {
-      "lastModificationDate": 1708650608977,
-      "contentHash": "3b5b18b41d2e0e6b30175855746a68dc",
+      "lastModificationDate": 1708654874200,
+      "contentHash": "a9b7910e9b918296e2ed205d8fa805bd",
       "sourceName": "contracts/MinimalForwarder.sol",
       "solcConfig": {
         "version": "0.8.17",

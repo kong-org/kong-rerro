@@ -9,10 +9,12 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 /**
  * @dev Simple minimal forwarder to be used together with an ERC2771 compatible contract. See {ERC2771Context}.
  *
- * MinimalForwarder is mainly meant for testing, as it is missing features to be a good production-ready forwarder. This
- * contract does not intend to have all the properties that are needed for a sound forwarding system. A fully
- * functioning forwarding system with good properties requires more complexity. We suggest you look at other projects
- * such as the GSN which do have the goal of building a system like that.
+ * This MinimalForwarder has been aadapted from the OpenZeppelin example to be tailored for use with HaLo chips.
+ * In a single tap with version c3 and greater HaLo chips you can obtain both the Ethereum address and a signature
+ * from the chip, however, the Ethereum address is not signed and is passed independently as a parameter.
+ * 
+ * The `from` parameter is not signed with the rest of the data. A deadline has been added to mitigate sending stale
+ * requests.
  */
 contract MinimalForwarder is EIP712 {
     using ECDSA for bytes32;
@@ -23,17 +25,19 @@ contract MinimalForwarder is EIP712 {
         uint8 v;
     }
 
-    // Note that `from` has been removed from the request as it is not signed; instead it's passed independently as a parameter.
+    // Note that `from` is not signed
     struct ForwardRequest {
+        address from;
         address to;
         uint256 value;
         uint256 gas;
+        uint48 deadline;
         uint256 salt;
         bytes data;
     }
 
     bytes32 private constant _TYPEHASH =
-        keccak256("ForwardRequest(address to,uint256 value,uint256 gas,uint256 salt,bytes data)");
+        keccak256("ForwardRequest(address to,uint256 value,uint256 gas,uint48 deadline,uint256 salt,bytes data)");
 
     mapping(address => mapping(uint256 => bool)) private _usedSalts;
 
@@ -43,27 +47,27 @@ contract MinimalForwarder is EIP712 {
         return _usedSalts[from][salt];
     }
 
-    function verify(address from, ForwardRequest calldata req, ECDSASignature calldata signature) public view returns (bool) { 
+    function verify(ForwardRequest calldata req, ECDSASignature calldata signature) public view returns (bool) { 
+        require(req.deadline >= block.timestamp, "MinimalForwarder: request expired");
         address signer = _hashTypedDataV4(
-            keccak256(abi.encode(_TYPEHASH, req.to, req.value, req.gas, req.salt, keccak256(req.data)))
+            keccak256(abi.encode(_TYPEHASH, req.to, req.value, req.gas, req.deadline, req.salt, keccak256(req.data)))
         ).recover(signature.v, signature.r, signature.s);
         
         // Check if the salt has been used before.
-        bool saltUsed = _usedSalts[from][req.salt];
-        return !saltUsed && signer == from;
+        bool saltUsed = _usedSalts[req.from][req.salt];
+        return !saltUsed && signer == req.from;
     }
 
     function execute(
-        address from,
         ForwardRequest calldata req,
         ECDSASignature calldata signature // See ForwardRequestSig for what we've actually signed 
     ) public payable returns (bool, bytes memory) {
-        require(verify(from, req, signature), "MinimalForwarder: signature does not match request");
+        require(verify(req, signature), "MinimalForwarder: signature does not match request");
         // Store the salt for this `from` + `salt` pair, to prevent replay attacks.
-        _usedSalts[from][req.salt] = true;
+        _usedSalts[req.from][req.salt] = true;
 
         (bool success, bytes memory returndata) = req.to.call{gas: req.gas, value: req.value}(
-            abi.encodePacked(req.data, from)
+            abi.encodePacked(req.data, req.from)
         );
 
         // Validate that the relayer has sent enough gas for the call.
