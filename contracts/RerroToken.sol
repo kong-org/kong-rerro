@@ -21,9 +21,9 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
 
     // Initial token amounts for $RERRO Quest
     uint256 public tokenCap = 14997495 * 10**18;
-    uint256 public defaultMintAmount = 1 * 10**18;
-    uint256 public defaultClaimedMintAmount = 2 * 10**18;
-    uint256 public chipIdOwnerMintAmount = 1 * 10**18;
+    uint256 public defaultMintAmount = 250 * 10**18;
+    uint256 public defaultClaimedMintAmount = 500 * 10**18;
+    uint256 public chipIdOwnerMintAmount = 100 * 10**18;
 
     // The key which is used to sign the chipId
     address public arxCertSigner;

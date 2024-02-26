@@ -1,9 +1,17 @@
 const { ethers, artifacts } = require("hardhat");
-const { instantiateGateway, getChipSigWithGateway } = require('../src/halo.js');
+const { instantiateGateway, getChipSigWithGateway, getChipPublicKeys } = require('../src/halo.js');
+const { createClient } = require("@supabase/supabase-js");
 require("dotenv").config();
+
+    // Initialize Supabase client
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_KEY;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Wrap the top-level code in an async IIFE
 (async () => {
+    const networkName = await hre.network.name;
+
     // Get the contract ABI
     const artifact = await artifacts.readArtifact("RerroToken");
 
@@ -15,15 +23,15 @@ require("dotenv").config();
   
     // RerroToken and Forwarder Contract Addresses
     // TODO: move these to environment variables, specfic to deployment
-    const rerroAddress = "0xB709b74d34ec337992d3EE00C386A2Bc4cEacc84";
-    const forwarderAddress = "0x4266814eB1c683AAf8574bd7D4D5450bb5F74E88";
+    const rerroAddress = process.env[`${networkName.toUpperCase()}_RERRO_ADDRESS`];
+    const forwarderAddress = process.env[`${networkName.toUpperCase()}_FORWARDER_ADDRESS`];
   
     // Initialize contract instance
     const rerroToken = new ethers.Contract(rerroAddress, abi, provider);
   
     // Chain ID
     // TODO: move this to environment variable
-    const chainId = "11155111"
+    const chainId = process.env[`${networkName.toUpperCase()}_CHAIN_ID`];
   
     // Get the relayer url from the environment
     const url = process.env.ACTION_WEBHOOK_URL;
@@ -65,12 +73,30 @@ require("dotenv").config();
           value,
         };
     }
-    
+
+    async function getSignatureForAddress(ethAddress) {
+        const hashedAddress = ethers.utils.keccak256(ethAddress);
+
+        // Query Supabase for the signature corresponding to the hashed Ethereum address
+        let { data, error } = await supabase
+            .from('certs')
+            .select('chipCert')
+            .eq('chipHash', hashedAddress)
+            .single();
+
+        if (error) throw new Error(`Supabase query failed: ${error.message}`);
+        return data.chipCert;
+    }
+
     async function sendMetaTx(provider, scanner) {
       if (!url) throw new Error(`Missing relayer url`);
     
       // Instantiate the HaLo gateway (desktop)
       const gateway = await instantiateGateway();
+
+      const [ chipAddress, pk2, _rawKeys ] = await getChipPublicKeys(gateway);
+
+      const cert = await getSignatureForAddress(chipAddress);
     
       const transaction = {
         to: rerroToken.address,
@@ -78,7 +104,7 @@ require("dotenv").config();
         gas: ethers.utils.hexlify(1000000), // gas limit
         deadline: ethers.utils.hexlify(Math.floor(Date.now() / 1000) + 60 * 1440), // 1 day
         salt: ethers.utils.hexlify(ethers.utils.randomBytes(32)),
-        data: rerroToken.interface.encodeFunctionData("mint", [scanner]),
+        data: rerroToken.interface.encodeFunctionData("mintWithSignature", [scanner, cert]),
         chainId: chainId,
       };
     

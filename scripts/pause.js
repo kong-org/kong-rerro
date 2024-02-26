@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 const fs = require('fs');
 const path = require('path');
-const { keccak256, toChecksumAddress } = require('ethereumjs-util');
+require("dotenv").config();
 
 const networkName = hre.network.name;
 const privateKey = process.env[`${networkName.toUpperCase()}_PRIVATE_KEY`];
@@ -29,7 +29,7 @@ function loadContractDetails(contractName) {
     const contractABI = artifact.abi;
 
     // TODO: get this from env/deployments
-    const rerroAddress = '0xB709b74d34ec337992d3EE00C386A2Bc4cEacc84'; // Set this based on your deployment
+    const rerroAddress = process.env[`${networkName.toUpperCase()}_RERRO_ADDRESS`]; // Set this based on your deployment
 
     return { rerroAddress, contractABI };
 }

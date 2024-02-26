@@ -77,6 +77,7 @@ describe("RerroToken Interactive Test with Chip Address Seeding", function () {
         [deployer, scanner, scanner2, scanner3, chipOwner] = await ethers.getSigners();
 
         forwarder = await deploy('MinimalForwarder');
+        console.log(`Deploying RerroToken with certSigner: ${arxCertSigner.address}`)
         rerroToken = await deploy("RerroToken", forwarder.address, arxCertSigner.address);  
 
         await rerroToken.deployed();

@@ -31,7 +31,7 @@ function loadContractDetails(contractName) {
     // The contract address is not typically stored in the artifact file.
     // You'll need to obtain it from your deployment script or environment variables.
     // For demonstration, we'll leave it as an empty string.
-    const rerroAddress = '0xB709b74d34ec337992d3EE00C386A2Bc4cEacc84'; // Set this based on your deployment
+    const rerroAddress = process.env[`${networkName.toUpperCase()}_RERRO_ADDRESS`]; // Set this based on your deployment
 
     return { rerroAddress, contractABI };
 }

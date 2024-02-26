@@ -21,7 +21,7 @@ async function main() {
 
   // Deploy the $RERRO contract
   const RerroContract = await hre.ethers.getContractFactory("RerroToken");
-  const rerroContract = await RerroContract.deploy(minimalForwarder.address);
+  const rerroContract = await RerroContract.deploy(minimalForwarder.address, "0x2b9Eea440875F28c982D0bAA23C53353C9142F16"); // This is the "production" signer address
 
   await rerroContract.deployed();
 
