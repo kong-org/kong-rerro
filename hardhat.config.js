@@ -23,4 +23,7 @@ module.exports = {
   sourcify: {
     enabled: true
   },
+  gasReporter: {
+    enabled: true
+  }
 };

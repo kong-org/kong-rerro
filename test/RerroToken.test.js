@@ -1,13 +1,14 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+require("dotenv").config();
 
 describe("RerroToken with ERC2771", function () {
-    let rerroToken, trustedForwarder, deployer, chipId1, chipId2, scanner;
+    let rerroToken, trustedForwarder, deployer, chipId1, chipId2, scanner, arxCertSigner;
 
     beforeEach(async function () {
-        [deployer, trustedForwarder, chipId1, chipId2, scanner] = await ethers.getSigners();
+        [deployer, trustedForwarder, chipId1, chipId2, scanner, arxCertSigner] = await ethers.getSigners();
         const RerroToken = await ethers.getContractFactory("RerroToken");
-        rerroToken = await RerroToken.deploy(trustedForwarder.address);
+        rerroToken = await RerroToken.deploy(trustedForwarder.address, arxCertSigner.address);
         await rerroToken.deployed();
         await rerroToken.setMintPausedState(false);
 
@@ -48,4 +49,5 @@ describe("RerroToken with ERC2771", function () {
             .to.emit(rerroToken, 'Transfer')
             .withArgs(ethers.constants.AddressZero, scanner.address, newMintAmount);
     });
+
 });

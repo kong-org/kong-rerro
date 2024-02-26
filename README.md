@@ -12,8 +12,14 @@ npx hardhat test
 
 ## Seeding Chips
 
-Chips must be added to the contract. Create a `chipPublicKeys.txt` file with the raw, uncompressed chip public keys you would like to seed.
+Chips must be added to the contract. Create a `chipPublicKeys.txt` file with the raw, uncompressed chip public keys you would like to seed. Seeded chips can be claimed in a fully decentralized fashion.
 
 ```
 npx hardhat run scripts/bulkSeed.js --network sepolia
 ```
+
+## Deploying
+
+You will need to include the `trustedForwarder` address from the deployment MinimalForwarded in the constructor along with an `arxChipSigner` address. The `arxChipSigner` is the address that was used to create certificates of every chip which should be publicly available (see `publicCert.js`).
+
+After deployment you will not be able to mint chips until `setMintPausedState` is changed to `false`. See `pause.js` for a simple script to update this as well as the `setClaimOwnershipPausedState`.

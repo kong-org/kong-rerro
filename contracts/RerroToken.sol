@@ -16,7 +16,6 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
     mapping(address => uint256) public seededChipAmounts;
     mapping(address => mapping(address => bool)) public scannerMinted;
 
-    // TODO: change pause times to windows that have an initial setting in the constructor.
     bool public claimOwnershipPaused = true;
     bool public mintPaused = true;
 
@@ -26,8 +25,16 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
     uint256 public defaultClaimedMintAmount = 2 * 10**18;
     uint256 public chipIdOwnerMintAmount = 1 * 10**18;
 
-    constructor(address trustedForwarder) ERC20("Rerro", "RERRO") ERC2771Context(trustedForwarder) {
-        // _mint(account, amount);
+    // The key which is used to sign the chipId
+    address public arxCertSigner;
+
+    // Updated constructor to accept arxCertSigner
+    constructor(address trustedForwarder, address _arxCertSigner) 
+        ERC20("KONG Land Rerro", "RERRO") 
+        ERC2771Context(trustedForwarder) 
+    {
+        arxCertSigner = _arxCertSigner;
+        //_mint(msg.sender, 1000000 * 10**18);
     }
 
     function setTokenCap(uint256 _newCap) external onlyOwner {
@@ -50,31 +57,75 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
         require(chipIds.length == mintAmounts.length, "Mismatched arrays length");
 
         for (uint256 i = 0; i < chipIds.length; i++) {
+            seededChips[chipIds[i]] = true; // Seed the chip if it hasn't been seeded
             seededChipAmounts[chipIds[i]] = mintAmounts[i];
         }
     }
+    
+    function verifySignature(address chipId, bytes memory signature) public view returns (bool) {
+        bytes32 messageHash = keccak256(abi.encodePacked(chipId));
+        bytes32 ethSignedMessageHash = messageHash.toEthSignedMessageHash();
 
-    // Called from the chip and relayed via ERC2771; note a few things:
-    // 1. the chip is the signer and thus the sign command works even on old chips
-    // 2. the scanner doesnt need to sign any tx
-    // 3. _msgSender() is the chip, not the scanner
-    function claimOwnership(address owner) external {
-        address chipId = _msgSender();
-
-        require(!claimOwnershipPaused, "Claiming is currently disabled.");
-        chipIdOwner[chipId] = owner;
-        seededChipAmounts[chipId] = defaultClaimedMintAmount; // We set a higher mint amount for chips that have been claimed by someone
+        return ethSignedMessageHash.recover(signature) == arxCertSigner;
     }
 
     // Called from the chip and relayed via ERC2771; note a few things:
     // 1. the chip is the signer and thus the sign command works even on old chips
     // 2. the scanner doesnt need to sign any tx
     // 3. _msgSender() is the chip, not the scanner
+
+    // ClaimOwnership with signature verification
+    function claimOwnershipWithSignature(address owner, bytes calldata signature) external {
+        address chipId = _msgSender();
+        require(verifySignature(chipId, signature), "Invalid signature");
+        seededChips[chipId] = true; // Ensure the chip is marked as seeded if it wasn't already
+        claimOwnershipInternal(chipId, owner);
+    }
+
+    // ClaimOwnership without signature, with seeding check
+    function claimOwnership(address owner) external {
+        address chipId = _msgSender();
+        require(seededChips[chipId], "Chip is not seeded; ownership claim not allowed.");
+        claimOwnershipInternal(chipId, owner);
+    }
+
+    // Internal function to handle common claimOwnership logic
+    function claimOwnershipInternal(address chipId, address owner) internal {
+        require(!claimOwnershipPaused, "Claiming is currently disabled.");
+        require(chipIdOwner[chipId] == address(0), "Ownership already claimed.");
+        chipIdOwner[chipId] = owner;
+        seededChipAmounts[chipId] = defaultClaimedMintAmount; // Set a higher mint amount for chips that have been claimed
+    }
+
+    // Called from the chip and relayed via ERC2771; note a few things:
+    // 1. the chip is the signer and thus the sign command works even on old chips
+    // 2. the scanner doesnt need to sign any tx
+    // 3. _msgSender() is the chip, not the scanner
+
+    // Mint function without signature, reverting if chip is not seeded
     function mint(address scanner) external {
         address chipId = _msgSender();  
+        require(seededChips[chipId], "Chip is not seeded; minting not allowed.");
+        mintInternal(scanner, chipId);
+    }
+    
+    // Mint function with signature verification
+    function mintWithSignature(address scanner, bytes calldata signature) external {
+        address chipId = _msgSender();
+        require(verifySignature(chipId, signature), "Invalid signature");
 
+        // If the chip isn't seeded, seed it and set the default mint amount
+        if (!seededChips[chipId]) {
+            seededChips[chipId] = true;
+            seededChipAmounts[chipId] = defaultMintAmount;
+        }
+
+        mintInternal(scanner, chipId);
+    }
+
+    // Internal function to handle common minting logic
+    function mintInternal(address scanner, address chipId) internal {
         require(!mintPaused, "Seeding and minting are currently disabled.");
-        require(seededChips[chipId], "Unknown chipId.");
         require(!scannerMinted[chipId][scanner], "Scanner has already minted this chipId.");
 
         uint256 scannerMintAmount = seededChipAmounts[chipId];
@@ -86,11 +137,15 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
         // The owner cannot also be the scanner
         if (chipOwner != scanner) {
             _mint(scanner, scannerMintAmount);
-            // Check to see if the chip has been claimed by someone
+            // If the chip has been claimed by someone
             if (chipOwner != address(0)) {
                 _mint(chipIdOwner[chipId], chipIdOwnerMintAmount);
             }
         }
+    }
+
+    function setArxCertSigner(address _newSigner) external onlyOwner {
+        arxCertSigner = _newSigner;
     }
 
     function setMintPausedState(bool _state) external onlyOwner {
