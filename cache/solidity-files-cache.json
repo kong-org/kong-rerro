@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/cameron/Documents/Arx Research/Development/kong-rerro/contracts/RerroToken.sol": {
-      "lastModificationDate": 1708911745917,
-      "contentHash": "2af7a7afec586530ebbac57aaa998be4",
+      "lastModificationDate": 1709065199856,
+      "contentHash": "e4992e9cce1bdd30e4eedc3c4f033418",
       "sourceName": "contracts/RerroToken.sol",
       "solcConfig": {
         "version": "0.8.17",

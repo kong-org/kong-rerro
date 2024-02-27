@@ -127,6 +127,8 @@ require("dotenv").config();
         signature: signature,
       };
     
+      console.log(`${JSON.stringify(request)}`)
+
       try {
         const response = await fetch(url, {
           method: 'POST',

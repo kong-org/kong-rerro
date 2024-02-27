@@ -74,7 +74,7 @@ describe("RerroToken Interactive Test with Chip Address Seeding", function () {
     let arxCertSigner = new ethers.Wallet(arxCertSignerPrivateKey, provider);
 
     before(async function () {
-        [deployer, scanner, scanner2, scanner3, chipOwner] = await ethers.getSigners();
+        [deployer, scanner, scanner2, scanner3, scanner4, chipOwner] = await ethers.getSigners();
 
         forwarder = await deploy('MinimalForwarder');
         console.log(`Deploying RerroToken with certSigner: ${arxCertSigner.address}`)
@@ -90,6 +90,7 @@ describe("RerroToken Interactive Test with Chip Address Seeding", function () {
     });
 
     it("Interactive seeding and minting with user-provided signature", async function () {
+        console.log("Scan unique chip #1")
 
         // Scan the chip and get the public keys
         const [ chipAddress, pk2, _rawKeys ] = await getChipPublicKeys(gateway);
@@ -119,7 +120,8 @@ describe("RerroToken Interactive Test with Chip Address Seeding", function () {
         };
     
         const typedData = await buildEIP712TypedData(chainId, forwarder.address, transaction);
-
+        
+        console.log("Scan unique chip #1 again")
         const signatureRaw = (await getChipSigWithGateway(gateway, typedData.domain, typedData.types, typedData.value)).signature.raw;
         const signature = {
             r: '0x' + signatureRaw.r,
@@ -148,6 +150,7 @@ describe("RerroToken Interactive Test with Chip Address Seeding", function () {
     });
 
     it("Claim a chip, then mint", async function () {
+        console.log("Scan unique chip #2")
         const provider = ethers.provider; // Using Hardhat's default provider
 
         // Unpasue the claim ownership, otherwise minting amounts will be incorrect
@@ -181,6 +184,7 @@ describe("RerroToken Interactive Test with Chip Address Seeding", function () {
     
         const typedData = await buildEIP712TypedData(chainId, forwarder.address, transaction);
 
+        console.log("Scan unique chip #2 again")
         const signatureRaw = (await getChipSigWithGateway(gateway, typedData.domain, typedData.types, typedData.value)).signature.raw;
         const signature = {
             r: '0x' + signatureRaw.r,
@@ -215,6 +219,7 @@ describe("RerroToken Interactive Test with Chip Address Seeding", function () {
     
         const typedDataMint = await buildEIP712TypedData(chainId, forwarder.address, transactionMint);
 
+        console.log("Scan unique chip #2 again")
         const signatureRawMint = (await getChipSigWithGateway(gateway, typedDataMint.domain, typedDataMint.types, typedDataMint.value)).signature.raw;
         const signatureMint = {
             r: '0x' + signatureRawMint.r,
@@ -233,13 +238,14 @@ describe("RerroToken Interactive Test with Chip Address Seeding", function () {
         const chipOwnerBalanceAfter = await rerroToken.balanceOf(chipOwner.address);
         const scannerBalanceAfter = await rerroToken.balanceOf(scanner2.address);
 
-        expect(chipOwnerBalanceAfter.sub(chipOwnerBalanceBefore)).to.equal(chipOwnerMintAmount);
+        // Chip owner gets the mint amount for claiming + the amount from the other person who minted
+        expect(chipOwnerBalanceAfter.sub(chipOwnerBalanceBefore)).to.equal(chipOwnerMintAmount.add(mintAmount));
         expect(scannerBalanceAfter.sub(scannerBalanceBefore)).to.equal(mintAmount);
         
     });
 
     it("Interactive seeding and minting with user-provided signature and chip cert", async function () {
-
+        console.log("Scan unique chip #3")
         // Scan the chip and get the public keys
         const [ chipAddress, pk2, _rawKeys ] = await getChipPublicKeys(gateway);
 
@@ -265,6 +271,7 @@ describe("RerroToken Interactive Test with Chip Address Seeding", function () {
     
         const typedData = await buildEIP712TypedData(chainId, forwarder.address, transaction);
 
+        console.log("Scan unique chip #3 again")
         const signatureRaw = (await getChipSigWithGateway(gateway, typedData.domain, typedData.types, typedData.value)).signature.raw;
         const signature = {
             r: '0x' + signatureRaw.r,

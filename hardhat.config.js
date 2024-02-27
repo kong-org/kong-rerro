@@ -1,5 +1,6 @@
 require("@nomiclabs/hardhat-waffle");
 require("@nomicfoundation/hardhat-verify");
+require("hardhat-gas-reporter");
 require('dotenv').config();
 
 module.exports = {
