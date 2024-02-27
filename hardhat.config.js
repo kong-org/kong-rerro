@@ -16,7 +16,11 @@ module.exports = {
     mainnet: {
       url: `https://mainnet.infura.io/v3/${process.env.INFURA_PROJECT_ID}`,
       accounts: [`0x${process.env.MAINNET_PRIVATE_KEY}`]
-    } 
+    },
+    base: {
+      url: `https://base-mainnet.g.alchemy.com/v2/${process.env.ALCHEMY_API_KEY}`,
+      accounts: [`0x${process.env.BASE_PRIVATE_KEY}`]
+    }    
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY

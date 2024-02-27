@@ -258,7 +258,9 @@ const ForwarderAbi = [
       "type": "function"
     }
   ];
-const ForwarderAddress = "0x4266814eB1c683AAf8574bd7D4D5450bb5F74E88";
+
+
+const ForwarderAddress = "SET_FORWARDER_ADDRESS_HERE";
 
 async function relay(forwarder, request, signature, whitelist) {
   // Decide if we want to relay this request based on a whitelist

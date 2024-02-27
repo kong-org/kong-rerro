@@ -23,7 +23,7 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
     uint256 public tokenCap = 14997495 * 10**18;
     uint256 public defaultMintAmount = 250 * 10**18;
     uint256 public defaultClaimedMintAmount = 500 * 10**18;
-    uint256 public chipIdOwnerMintAmount = 100 * 10**18;
+    uint256 public chipIdOwnerMintAmount = 25 * 10**18;
 
     // The key which is used to sign the chipId
     address public arxCertSigner;
@@ -48,6 +48,24 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
             address chipId = chipIds[i];
             seededChips[chipId] = true;
             seededChipAmounts[chipId] = defaultMintAmount;
+        }
+    }
+
+    function bulkClaim(address[] calldata chipIds, uint256[] calldata mintAmounts, address[] calldata owners) external onlyOwner {
+        require(chipIds.length == owners.length, "Mismatched owners arrays length");
+        require(chipIds.length == mintAmounts.length, "Mismatched mintAmount arrays length");
+
+        for (uint256 i = 0; i < chipIds.length; i++) {
+            address chipId = chipIds[i];
+            address owner = owners[i];
+
+            require(chipIdOwner[chipId] == address(0), "Ownership already claimed for one or more chips.");
+
+            seededChips[chipIds[i]] = true;
+            
+             // Note: in the bulk claim scenario we do not mint $RERRO to the chip owner
+            chipIdOwner[chipId] = owner;
+            seededChipAmounts[chipId] = mintAmounts[i];
         }
     }
 
