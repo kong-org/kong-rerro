@@ -23,7 +23,20 @@ module.exports = {
     }    
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY
+    apiKey: {
+      sepolia: process.env.ETHERSCAN_API_KEY,
+      base: "base", // apiKey is not required, just set a placeholder
+    },
+    customChains: [
+      {
+        network: "base",
+        chainId: 8453,
+        urls: {
+          apiURL: "https://api.routescan.io/v2/network/mainnet/evm/8453/etherscan",
+          browserURL: "https://basedscan.io"
+        }
+      }
+    ]
   },
   sourcify: {
     enabled: true

@@ -2,7 +2,10 @@
 
 Embark on the [$RERRO QUEST](https://rerro.quest) for your chance to win prizes and glory! Your journey starts in KONG Land, a cryptostate where the fabric of reality weaves through the known and the unimaginable.
 
-$RERRO is an ERC-20 that leverages ERC-2771 meta-transcations to relay transactions on behalf of chips. It's based on an adapted verison of the OpenZeppelin Minimal Forwarder.
+$RERRO is an ERC-20 that leverages ERC-2771 meta-transcations to relay transactions on behalf of chips. It's based on an adapted verison of the OpenZeppelin Minimal Forwarder. $RERRO is live on Base:
+
+RerroToken: 0xA751FcD801F63d01ED9eeF0B34e8C62BC85cb396
+MinimalForwarder: 0xa1DEb9F9483C2a51ae092464c0d070e78A4B778e
 
 ## Testing
 

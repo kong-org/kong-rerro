@@ -36,7 +36,7 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
         arxCertSigner = _arxCertSigner;
 
         // Mint some to the KONG Land treasury
-        _mint(0xbdC95cA05cC25342Ae9A96FB12Cbe937Efe2e28C, 1499749 * 10**18);
+        _mint(0x8e683d27A31a0a085A7b4D433a21EEc3ec3CFAb7, 1499749 * 10**18);
     }
 
     function setTokenCap(uint256 _newCap) external onlyOwner {
@@ -62,7 +62,7 @@ contract RerroToken is ERC20, ERC2771Context, Ownable {
             require(chipIdOwner[chipId] == address(0), "Ownership already claimed for one or more chips.");
 
             seededChips[chipIds[i]] = true;
-            
+
              // Note: in the bulk claim scenario we do not mint $RERRO to the chip owner
             chipIdOwner[chipId] = owner;
             seededChipAmounts[chipId] = mintAmounts[i];
