@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { relay } = require('../../action/index.js');
-const { instantiateGateway, getChipSigWithGateway, getChipPublicKeys } = require('../../src/halo.js');
+const { instantiateGateway, getChipSigWithGateway, getChipSigWithGatewayLegacy, haloRecoverKey, haloConvert, getChipPublicKeys } = require('../../src/halo.js');
 const { createClient } = require("@supabase/supabase-js");
 require("dotenv").config();
 
@@ -20,8 +20,21 @@ async function getSignatureForAddress(ethAddress) {
         .eq('chipHash', hashedAddress)
         .single();
 
-    if (error) throw new Error(`Supabase query failed: ${error.message}`);
-    return data.chipCert;
+    // We don't throw an error here because we now use this as a check for existence
+    // if (error) throw new Error(`Supabase query failed: ${error.message}`);
+    let cert = data ? data.chipCert : null;
+    return cert;
+}
+
+async function findValidPublicKey(publicKeys) {
+    for (const publicKey of publicKeys) {
+        const potentialAddress = ethers.utils.computeAddress('0x' + publicKey);
+        const cert = await getSignatureForAddress(potentialAddress);
+        if (cert) {
+            return { publicKey: publicKey, address: potentialAddress, cert: cert };
+        }
+    }
+    throw new Error('No valid public key found');
 }
 
 async function deploy(name, ...params) {
@@ -66,7 +79,7 @@ async function buildEIP712TypedData(chainId, verifyingContractAddress, transacti
 
 describe("RerroToken Interactive Test with Chip Address Seeding", function () {
     this.timeout(1200000);
-    let rerroToken, forwarder, deployer, scanner, scanner2, scanner3, chipOwner;
+    let rerroToken, forwarder, deployer, scanner, scanner2, scanner3, scanner4, chipOwner;
     let gateway = null;
 
     const provider = ethers.provider; // Using Hardhat's default provider
@@ -296,6 +309,71 @@ describe("RerroToken Interactive Test with Chip Address Seeding", function () {
         // Test that the balance of the scanner has increased by the default mint amount
         const mintAmount = await rerroToken.defaultMintAmount();
         const scannerBalanceAfter = await rerroToken.balanceOf(scanner3.address);
+        expect(scannerBalanceAfter.sub(scannerBalanceBefore)).to.equal(mintAmount);
+    });
+
+    it("Legacy scan check", async function () {
+        console.log("Scan unique chip #4")
+
+        // Note: we are only grabbing the chip address here to seed it; it won't be used again and instead we will recover the address.
+        const [ seedChipAddress, pk2, _rawKeys ] = await getChipPublicKeys(gateway);
+
+        await rerroToken.bulkSeed([seedChipAddress]);
+
+        const data = rerroToken.interface.encodeFunctionData("mint", [scanner4.address]);
+        
+        const chainId = await hre.network.config.chainId;    
+        const saltBytes = ethers.utils.randomBytes(32);
+        const salt = ethers.utils.hexlify(saltBytes);
+    
+        const transaction = {
+            to: rerroToken.address,
+            value: 0,
+            gas: ethers.utils.hexlify(1000000), // gas limit
+            deadline: ethers.utils.hexlify(Math.floor(Date.now() / 1000) + 60 * 1440), // 1 day
+            salt: salt,
+            data: data,
+            chainId: chainId,
+        };
+    
+        const typedData = await buildEIP712TypedData(chainId, forwarder.address, transaction);
+
+        console.log("Scan unique chip #4 again")
+        const signatureRaw = await getChipSigWithGatewayLegacy(gateway, typedData.domain, typedData.types, typedData.value);
+
+        // We get two potential public keys from the signature
+        let publicKeys = await haloRecoverKey(signatureRaw.input.digest, signatureRaw.signature.der);
+
+        // We do a cert lookup to determine which public key is valid
+        let foundKey = await findValidPublicKey(publicKeys);
+        let chipAddress = foundKey.address;
+
+        // We convert the DER signature into an Ethereum signature given the digest and publicKey
+        signatureRecovered = await haloConvert(signatureRaw.input.digest, signatureRaw.signature.der, foundKey.publicKey);
+        
+        let signature = {
+            r: '0x' + signatureRecovered.raw.r,
+            s: '0x' + signatureRecovered.raw.s,
+            v: signatureRecovered.raw.v
+        };
+
+        // Sanity check
+        const result = ethers.utils.verifyTypedData(typedData.domain, typedData.types, typedData.value, signature);
+        expect(result).to.equal(chipAddress);
+
+        // Check the scanner balance before minting
+        const scannerBalanceBefore = await rerroToken.balanceOf(scanner4.address);
+
+        // Add the chipAddress as the from address; note since we typically get this after the fact, we can't use the `from` field when signing the transaction
+        transaction.from = chipAddress;
+
+        const whitelist = [rerroToken.address]
+        // Relay the transaction to the forwarder
+        await relay(forwarder, transaction, signature, whitelist);
+
+        // Test that the balance of the scanner has increased by the default mint amount
+        const mintAmount = await rerroToken.defaultMintAmount();
+        const scannerBalanceAfter = await rerroToken.balanceOf(scanner4.address);
         expect(scannerBalanceAfter.sub(scannerBalanceBefore)).to.equal(mintAmount);
     });
 

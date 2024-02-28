@@ -1,4 +1,5 @@
 const { HaloGateway } = require("@arx-research/libhalo/api/desktop.js");
+const {haloRecoverPublicKey, haloConvertSignature, SECP256k1_ORDER} = require('@arx-research/libhalo/api/common.js');
 const websocket = require("websocket"); // Assuming you have a websocket library
 const QRCode = require("qrcode"); // Assuming QRCode library for generating QR codes
 
@@ -55,9 +56,34 @@ async function getChipSigWithGateway(gate, domain, types, value) {
   return await gate.execHaloCmd(cmd);
 }
 
+async function getChipSigWithGatewayLegacy(gate, domain, types, value) {
+    let cmd = {
+      "name": "sign",
+      "typedData": {
+          domain,
+          types,
+          value,
+        },
+      "keyNo": 1,
+      "legacySignCommand": true
+    };
+  
+    return await gate.execHaloCmd(cmd);
+}
+
+async function haloRecoverKey(digest, der) {
+    return await haloRecoverPublicKey(digest, der, SECP256k1_ORDER);
+}
+async function haloConvert(digest, der, publicKey) {
+    return await haloConvertSignature(digest, der, publicKey, SECP256k1_ORDER);
+}
+
 // Exporting the functions so they can be used elsewhere
 module.exports = {
   instantiateGateway,
   getChipPublicKeys,
-  getChipSigWithGateway
+  getChipSigWithGateway,
+  getChipSigWithGatewayLegacy,
+  haloRecoverKey,
+  haloConvert
 };
